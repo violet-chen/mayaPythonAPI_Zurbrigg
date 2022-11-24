@@ -24,17 +24,19 @@ class RollingNode(om.MPxNode):
             plug (_type_): 当plug是dirty状态时,会传过来,要求更新
             data (_type_): data提供了读取和写入节点属性值的方法
         """
-        # if plug == RollingNode.product_obj:
+        if plug == RollingNode.rotation_obj:
 
-        #     multiplier = data.inputValue(RollingNode.multiplier_obj).asInt()  # 获取multiplier_obj对象的输入的属性值
-        #     multiplicand = data.inputValue(RollingNode.multiplicand_obj).asDouble()  # 获取multiplicand_obj对象的输入的属性值
-        #     product = multiplier * multiplicand 
+            distance = data.inputValue(RollingNode.distance_obj).asDouble()
+            radius = data.inputValue(RollingNode.radius_obj).asDouble()
+            if radius==0:
+                rotation = 0
+            else:
+                rotation = distance / radius
 
-        #     product_data_handle = data.outputValue(RollingNode.product_obj)  # 获取product_obj对象的输出数据对象
-        #     product_data_handle.setDouble(product)  # 设置product_obj对象的输出数据
+            rotation_data_handle = data.outputValue(RollingNode.rotation_obj)
+            rotation_data_handle.setDouble(rotation)
 
-        #     data.setClean(plug) # 将plug设置为clean状态
-        pass
+            data.setClean(plug)
 
     @classmethod
     def creator(cls):
@@ -52,10 +54,11 @@ class RollingNode(om.MPxNode):
         numeric_attr.keyable = True
         numeric_attr.readable = False
 
-
         unit_attr = om.MFnUnitAttribute()  # 创建一个针对单位属性的函数集
+
         cls.rotation_obj = unit_attr.create("rotation", "rot", om.MFnUnitAttribute.kAngle, 0.0)
-        numeric_attr.writable = False #  设置属性没有输入引脚(其他属性不能直接写入它)
+        
+        # unit_attr.writable = False #  设置属性没有输入引脚(其他属性不能直接写入它)
         
         # 添加属性
         cls.addAttribute(cls.distance_obj)
@@ -107,4 +110,6 @@ if __name__ == "__main__":
     cmds.evalDeferred('if cmds.pluginInfo("{0}", q=True, loaded=True): cmds.unloadPlugin("{0}")'.format(plugin_name)) # 取消加载插件
     cmds.evalDeferred('if not cmds.pluginInfo("{0}", q=True, loaded=True): cmds.loadPlugin("{0}")'.format(plugin_name))  # 加载插件
     
-    cmds.evalDeferred('cmds.createNode("rollingnode")')
+    #cmds.evalDeferred('cmds.createNode("rollingnode")')
+
+    #cmds.evalDeferred(cmds.file("D:/ZhangRuiChen/zrctest/test.ma",o=True,f=True))

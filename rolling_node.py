@@ -110,6 +110,6 @@ if __name__ == "__main__":
     cmds.evalDeferred('if cmds.pluginInfo("{0}", q=True, loaded=True): cmds.unloadPlugin("{0}")'.format(plugin_name)) # 取消加载插件
     cmds.evalDeferred('if not cmds.pluginInfo("{0}", q=True, loaded=True): cmds.loadPlugin("{0}")'.format(plugin_name))  # 加载插件
     
-    #cmds.evalDeferred('cmds.createNode("rollingnode")')
+    cmds.evalDeferred('cmds.createNode("rollingnode")')
 
     #cmds.evalDeferred(cmds.file("D:/ZhangRuiChen/zrctest/test.ma",o=True,f=True))

@@ -32,6 +32,8 @@ class AttractorDeformerNode(ommpx.MPxDeformerNode):
             return
 
         target_position = data_block.inputValue(AttractorDeformerNode.target_position).asFloatVector()
+        target_position = om.MPoint(target_position) * world_matrix.inverse() # 将目标位置转换为局部空间下的数值
+        target_position = om.MFloatVector(target_position) # 获取目标位置在局部空间下的floatVector
 
         input_handle = data_block.outputArrayValue(self.input) # 使用outputArray代替inputArray以避免重新计算（外网翻译）
         input_handle.jumpToElement(multi_index)
@@ -43,34 +45,68 @@ class AttractorDeformerNode(ommpx.MPxDeformerNode):
         normals = om.MFloatVectorArray()  # 用来存取inputgeom的顶点的所有浮点法线
         mesh_fn.getVertexNormals(False, normals) # False的作用是不要average normal
 
-        inverse_world_matrix = world_matrix.inverse()
 
         geo_iter.reset()
         while not geo_iter.isDone():
+            # 顶点迭代器所获取的位置都是在局部空间下的位置
             pt_local = geo_iter.position()
-            pt_world = pt_local * world_matrix
 
-            target_vector = target_position - om.MFloatVector(pt_world)
+            target_vector = target_position - om.MFloatVector(pt_local)
 
             distance = target_vector.length()
 
             if distance <= max_distance:
 
-                normal = om.MVector(normals[geo_iter.index()]) * world_matrix # 世界空间下的顶点的法线向量
-                normal = om.MFloatVector(normal)
+                normal = normals[geo_iter.index()] # 局部空间下的顶点的法线浮点向量
 
                 angle = normal.angle(target_vector)  # 顶点的法线与顶点与目标点的向量之间的角度
                 if angle <= AttractorDeformerNode.MAX_ANGLE:
 
                     offset = target_vector * ((max_distance-distance)/max_distance)
 
-                    new_pt_world = pt_world + om.MVector(offset)
-                    new_pt_local = new_pt_world * inverse_world_matrix  # 局部空间下的新顶点位置
+                    new_pt_local = pt_local + om.MVector(offset)  # 局部空间下的新顶点位置
 
                     geo_iter.setPosition(new_pt_local)
 
             geo_iter.next()
 
+    def accessoryAttribute(self):
+        """ 返回要辅助修改的属性 """
+        return AttractorDeformerNode.target_position
+    
+    def accessoryNodeSetup(self, dag_modifier):
+        """ dag_modifier用于执行节点创建和连接操作 """
+        locator = dag_modifier.createNode("locator")
+
+        locator_fn = om.MFnDependencyNode(locator)
+        locator_translate_plug = locator_fn.findPlug("translate", False) # False意思是不需要networkplug，networkplug意思是在DG中建立连接的属性
+
+        target_position_plug = om.MPlug(self.thisMObject(), AttractorDeformerNode.target_position)  # 获取变形器的target_position的plug
+        dag_modifier.connect(locator_translate_plug, target_position_plug)
+
+        # 将定位器得位置设置在output_geom的位置
+        # 这里的output_geom指的是shape节点
+        # parent指的是transform节点，因为只有transform节点才有xyz坐标
+        output_geom_plug = om.MPlug(self.thisMObject(), self.outputGeom)
+        mPlugArray2 = om.MPlugArray()
+        output_geom_plug[0].connectedTo(mPlugArray2,False,True)
+        output_geom_obj = mPlugArray2[0].node()
+        output_geom_fn = om.MFnDagNode(output_geom_obj)
+        parent_obj = output_geom_fn.parent(0)
+        parent_fn = om.MFnDependencyNode(parent_obj)
+        parent_translate_plug = parent_fn.findPlug("translate",False)
+        parent_translate_x_handle = parent_translate_plug.child(0).asFloat()
+        parent_translate_y_handle = parent_translate_plug.child(1).asFloat()
+        parent_translate_z_handle = parent_translate_plug.child(2).asFloat()
+    
+        locator_translate_plug.child(0).setFloat(parent_translate_x_handle)
+        locator_translate_plug.child(1).setFloat(parent_translate_y_handle)
+        locator_translate_plug.child(2).setFloat(parent_translate_z_handle)
+
+        
+
+        
+        
     @classmethod
     def creator(cls):
         return AttractorDeformerNode()
@@ -133,6 +169,6 @@ if __name__ == '__main__':
     cmds.evalDeferred(
         'if not cmds.pluginInfo("{0}", q=True, loaded=True): cmds.loadPlugin("{0}")'.format(plugin_name))
 
-    cmds.evalDeferred('cmds.file("D:/ZhangRuiChen/zrctest/attractor_test.ma",o=True,f=True)')
+    cmds.evalDeferred('cmds.file("C:/Users/Administrator/Documents/maya/2018/plug-ins/test_scene/attractor_test.ma",o=True,f=True)')
     cmds.evalDeferred('cmds.select("pSphere1"); cmds.deformer(typ="attractordeformernode")')
-    cmds.evalDeferred('cmds.connectAttr("locatorShape1.worldPosition[0]","attractordeformernode1.targetPosition",f=True)')
+    #cmds.evalDeferred('cmds.connectAttr("locator1.translate","attractordeformernode1.targetPosition",f=True)')

@@ -30,7 +30,7 @@ class MutiplyNode(om.MPxNode):
             multiplicand = data.inputValue(MutiplyNode.multiplicand_obj).asDouble()  # 获取multiplicand_obj对象的输入的属性值
             product = multiplier * multiplicand 
 
-            product_data_handle = data.outputValue(MutiplyNode.product_obj)  # 获取product_obj对象的输出数据对象
+            product_data_handle = data.outputValue(MutiplyNode.product_obj)  # 获取product_obj对象的输出数据
             product_data_handle.setDouble(product)  # 设置product_obj对象的输出数据
 
             data.setClean(plug) # 将plug设置为clean状态

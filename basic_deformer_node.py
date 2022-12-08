@@ -24,10 +24,10 @@ class BasicDeformerNode(ommpx.MPxDeformerNode):
             if geo_iter.index() % 2 == 0:
                 pt = geo_iter.position()
                 # 局部空间
-                # pt.x += (0.2*envelope)
+                #pt.y += (2*envelope)
 
                 # 世界空间
-                pt = pt * matrix * 0.1
+                pt = pt * matrix * 1
 
                 geo_iter.setPosition(pt)
 

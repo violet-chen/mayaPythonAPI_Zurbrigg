@@ -16,9 +16,9 @@ class BlendDeformerNode(ommpx.MPxDeformerNode):
             变形的逻辑
         Args:
             data_block (_type_): 数据块
-            geo_iter (_type_): 针对geometry的顶点迭代器
+            geo_iter (_type_): 针对outputgeom的顶点迭代器
             matrix (_type_): 世界空间的矩阵
-            multi_index (_type_): _description_
+            multi_index (_type_): geom_index
         """
         # envelope是MPxDeformerNode类自带的属性
         envelope = data_block.inputValue(self.envelope).asFloat() # 获取控制整体权重值的值
@@ -46,7 +46,10 @@ class BlendDeformerNode(ommpx.MPxDeformerNode):
             source_pt = geo_iter.position()
             target_pt = target_points[geo_iter.index()]
 
-            final_pt = source_pt + ((target_pt - source_pt) * global_weight)
+            source_weight = self.weightValue(data_block, multi_index, geo_iter.index()) # 获取绘制的权重值
+
+            final_pt = source_pt + ((target_pt - source_pt) * global_weight * source_weight)
+
 
             geo_iter.setPosition(final_pt)
             
@@ -72,6 +75,7 @@ class BlendDeformerNode(ommpx.MPxDeformerNode):
         cls.addAttribute(cls.blend_weight)
 
         #变形器节点具有默认的outputGeom属性，因此我们没必要再创建一个输出的属性，我们可以直接利用这个默认的outputGemo属性
+        #outputGeom是我们需要变形的geom
         output_geom = ommpx.cvar.MPxGeometryFilter_outputGeom  
 
         cls.attributeAffects(cls.blend_mesh, output_geom)
@@ -92,15 +96,18 @@ def initializePlugin(plugin):
                                ommpx.MPxNode.kDeformerNode)
     except:
         om.MGlobal.displayError("Failed to register node: {0}".format(BlendDeformerNode.TYPE_NAME))
+    
+    cmds.makePaintable(BlendDeformerNode.TYPE_NAME, "weights", attrType="multiFloat", shapeMode = "deformer") # 使其能绘制权重
 
 def uninitializePlugin(plugin):
     """ 插件取消加载时执行这个函数"""
+    cmds.makePaintable(BlendDeformerNode.TYPE_NAME, "weights",remove=True) # 移除使其能绘制权重
     plugin_fn = ommpx.MFnPlugin(plugin)
     try:
         plugin_fn.deregisterNode(BlendDeformerNode.TYPE_ID)
     except:
         om.MGlobal.displayError("Failed to deregister node: {0}".format(BlendDeformerNode.TYPE_NAME))
-
+    
 if __name__ == '__main__':
     cmds.file(new=True,f=True)
     plugin_name = "blend_deformer_node.py"  # 插件的文件名
@@ -110,6 +117,6 @@ if __name__ == '__main__':
     # 如果插件没有加载就加载插件
     cmds.evalDeferred(
         'if not cmds.pluginInfo("{0}", q=True, loaded=True): cmds.loadPlugin("{0}")'.format(plugin_name))
-    cmds.evalDeferred('cmds.file("D:/ZhangRuiChen/zrctest/blend_deformer_node_test.ma",o=True,f=True)')
+    cmds.evalDeferred('cmds.file("D:/ZhangRuiChen/zrctest/blend_test.ma",o=True,f=True)')
     cmds.evalDeferred('cmds.select("sourceSphere"); cmds.deformer(typ="blenddeformernode")')
     cmds.evalDeferred('cmds.connectAttr("deformerTargetShape.outMesh", "blenddeformernode1.blendMesh", force=True)')

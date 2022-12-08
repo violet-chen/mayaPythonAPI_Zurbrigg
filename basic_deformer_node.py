@@ -24,10 +24,10 @@ class BasicDeformerNode(ommpx.MPxDeformerNode):
             if geo_iter.index() % 2 == 0:
                 pt = geo_iter.position()
                 # 局部空间
-                # pt.x += (0.2*envelope)
+                #pt.y += (2*envelope)
 
                 # 世界空间
-                pt = pt * matrix * 0.1
+                pt = pt * matrix * 1
 
                 geo_iter.setPosition(pt)
 
@@ -74,5 +74,5 @@ if __name__ == '__main__':
     # 如果插件没有加载就加载插件
     cmds.evalDeferred(
         'if not cmds.pluginInfo("{0}", q=True, loaded=True): cmds.loadPlugin("{0}")'.format(plugin_name))
-    cmds.evalDeferred('cmds.file("C:/Users/Adiministrator/Destop/test.ma",o=True,f=True)')
+    cmds.evalDeferred('cmds.file("C:/Users/Administrator/Documents/maya/2018/plug-ins/test_scene/basic_deformer_node_test.ma",o=True,f=True)')
     cmds.evalDeferred('cmds.select("nurbsPlane1"); cmds.deformer(typ="basicdeformernode")')

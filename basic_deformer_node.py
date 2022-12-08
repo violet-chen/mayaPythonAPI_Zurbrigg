@@ -74,5 +74,5 @@ if __name__ == '__main__':
     # 如果插件没有加载就加载插件
     cmds.evalDeferred(
         'if not cmds.pluginInfo("{0}", q=True, loaded=True): cmds.loadPlugin("{0}")'.format(plugin_name))
-    cmds.evalDeferred('cmds.file("C:/Users/Adiministrator/Destop/test.ma",o=True,f=True)')
+    cmds.evalDeferred('cmds.file("C:/Users/Administrator/Documents/maya/2018/plug-ins/test_scene/basic_deformer_node_test.ma",o=True,f=True)')
     cmds.evalDeferred('cmds.select("nurbsPlane1"); cmds.deformer(typ="basicdeformernode")')

@@ -117,6 +117,6 @@ if __name__ == '__main__':
     # 如果插件没有加载就加载插件
     cmds.evalDeferred(
         'if not cmds.pluginInfo("{0}", q=True, loaded=True): cmds.loadPlugin("{0}")'.format(plugin_name))
-    cmds.evalDeferred('cmds.file("D:/ZhangRuiChen/zrctest/blend_test.ma",o=True,f=True)')
+    cmds.evalDeferred('cmds.file("C:/Users/Administrator/Documents/maya/2018/plug-ins/test_scene/blend_test.ma",o=True,f=True)')
     cmds.evalDeferred('cmds.select("sourceSphere"); cmds.deformer(typ="blenddeformernode")')
     cmds.evalDeferred('cmds.connectAttr("deformerTargetShape.outMesh", "blenddeformernode1.blendMesh", force=True)')

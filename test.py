@@ -1,145 +1,174 @@
-# coding:utf-8
-# 自定义一个变形器节点,通过调整ripple改变多边形的形状
-import math
+# coding: utf-8
+import maya.OpenMaya as om
+import maya.OpenMayaMPx as ommpx
+import maya.cmds as cmds
 
-import maya.OpenMaya as OpenMaya
-import maya.OpenMayaMPx as OpenMayaMPx  # 制作自定义的东西时需要的模块
-import sys  # 输出错误所需要的模块
+class AttractorDeformerNode(ommpx.MPxDeformerNode):
 
-nodeName = "RippleDeformer"  # 定义节点的名字
-nodeId = OpenMaya.MTypeId(0x102fff)
+    TYPE_NAME = "attractordeformernode"
+    TYPE_ID = om.MTypeId(0x0007F7FE)
 
-
-class Ripple(OpenMayaMPx.MPxDeformerNode):
-    """
-    Commands ----> MPxCommand
-    Custom   ----> MPxNode
-    Deformer ----> MPxDeformerNode
-    """
-    # 创建MObject类型的输入输出
-    mObj_Displace = OpenMaya.MObject()
-    mObj_Amplitude = OpenMaya.MObject()
+    MAX_ANGLE = 0.5 * 3.14159265 # 90度
 
     def __init__(self):
-        OpenMayaMPx.MPxDeformerNode.__init__(self)
+        super(AttractorDeformerNode, self).__init__()
 
-    def deform(self, dataBlock, geoIterator, matrix, geometryIndex):
+    def deform(self, data_block, geo_iter, world_matrix, multi_index):
         """
-        变形器的核心参数
-        :param dataBlock:数据块
-        :param geoIterator: 迭代器，例如遍历一个几何体的所有顶点时用的到
-        :param matrix: 矩阵   几何体的世界矩阵或受影响的网格
-        :param geometryIndex: 几何索引，当使用多个几何体时，所有几何体都进入这个属性
-        :return:
+            变形的逻辑
+        Args:
+            data_block (_type_): 数据块
+            geo_iter (_type_): 针对geometry的顶点迭代器
+            matrix (_type_): 世界空间的矩阵
+            multi_index (_type_): geom_index
         """
+        # envelope是MPxDeformerNode类自带的属性
+        envelope = data_block.inputValue(self.envelope).asFloat() # 获取控制整体权重值的值
+        if envelope == 0:
+            return    
+        
+        max_distance = data_block.inputValue(AttractorDeformerNode.max_distance).asFloat()
+        if max_distance == 0:
+            return
 
-        input = OpenMayaMPx.cvar.MPxGeometryFilter_input
-        # 1. Attach a handle to input Array Attribute
-        # 1. 为输入数组属性附加handle
-        # 后来优化将inputArrayValue和inputValue都改为了output，可能是因为用output会自动检索最优路线吧
-        dataHandleInputArray = dataBlock.outputArrayValue(input)
-        # 2. Jump to particular element
-        # 2. 跳转到特定元素
-        dataHandleInputArray.jumpToElement(geometryIndex)
-        # 3. Attach a handle to specific data block
-        # 3. 将handle附加到特定的数据块
-        dataHandleInputElement = dataHandleInputArray.outputValue()
-        # 4. Reach to the child - inputGeom
-        inputGeom = OpenMayaMPx.cvar.MPxGeometryFilter_inputGeom
-        dataHandleInputGeom = dataHandleInputElement.child(inputGeom)
-        inMesh = dataHandleInputGeom.asMesh()
-        # Envelope
-        envelope = OpenMayaMPx.cvar.MPxGeometryFilter_envelope
-        dataHandleEnvelope = dataBlock.inputValue(envelope)
-        envelopeValue = dataHandleEnvelope.asFloat()
-        # Amplitude
-        dataHandleAmplitude = dataBlock.inputValue(Ripple.mObj_Amplitude)
-        amplitudeValue = dataHandleAmplitude.asFloat()
-        # Displace
-        dataHandleDisplace = dataBlock.inputValue(Ripple.mObj_Displace)
-        displaceValue = dataHandleDisplace.asFloat()
+        target_position = data_block.inputValue(AttractorDeformerNode.target_position).asFloatVector()
+        target_position = om.MPoint(target_position) * world_matrix.inverse() # 将目标位置转换为局部空间下的数值
+        target_position = om.MFloatVector(target_position) # 获取目标位置在局部空间下的floatVector
 
-        mFloatVectorArray_normal = OpenMaya.MFloatVectorArray()  # 创建一个MFloatVectorArray的对象，getVertexNormals方法需要用到
-        mFnMesh = OpenMaya.MFnMesh(inMesh)
-        # 第一个参数是angleWeighted，如果angleWeighted设置为false，则返回环绕面法线的简单平均值。第三个参数是设置空间为对象空间
-        mFnMesh.getVertexNormals(False, mFloatVectorArray_normal, OpenMaya.MSpace.kObject)
+        input_handle = data_block.outputArrayValue(self.input) # 使用outputArray代替inputArray以避免重新计算（外网翻译）
+        input_handle.jumpToElement(multi_index)
+        input_element_handle = input_handle.outputValue()
 
-        mPointArray_meshVert = OpenMaya.MPointArray()  # 创建一个空的存放点的数组
-        while not geoIterator.isDone():
-            pointPosition = geoIterator.position()
+        input_geom = input_element_handle.child(self.inputGeom).asMesh()
+        mesh_fn = om.MFnMesh(input_geom)
 
-            pointPosition.x = pointPosition.x + math.sin(geoIterator.index() + displaceValue) * amplitudeValue * \
-                              mFloatVectorArray_normal[geoIterator.index()].x * envelopeValue
-            pointPosition.y = pointPosition.y + math.sin(geoIterator.index() + displaceValue) * amplitudeValue * \
-                              mFloatVectorArray_normal[geoIterator.index()].y * envelopeValue
-            pointPosition.z = pointPosition.z + math.sin(geoIterator.index() + displaceValue) * amplitudeValue * \
-                              mFloatVectorArray_normal[geoIterator.index()].z * envelopeValue
-            # geoIterator.setPosition(pointPosition)
-            mPointArray_meshVert.append(pointPosition)
-            geoIterator.next()
-        geoIterator.setAllPosiions(mPointArray_meshVert)
+        normals = om.MFloatVectorArray()  # 用来存取inputgeom的顶点的所有浮点法线
+        mesh_fn.getVertexNormals(False, normals) # False的作用是不要average normal
 
 
-def deformerCreator():
-    nodePtr = OpenMayaMPx.asMPxPtr(Ripple())
-    return nodePtr
+        geo_iter.reset()
+        while not geo_iter.isDone():
+            # 顶点迭代器所获取的位置都是在局部空间下的位置
+            pt_local = geo_iter.position()
 
+            target_vector = target_position - om.MFloatVector(pt_local)
 
-def nodeInitializer():
-    """
-    写功能前先将流程写下来，然后每完成一个流程就标记一下那个流程
-    Create Attributes  创建属性 - check
-    Attach Attributes 附加属性 - check
-    Design Circuitry 设计电路图 - check
-    """
-    # 1. creating a function set for numeric attributes
-    # 创建数字属性的函数集，因为我们的自定义属性是数字的，因此创建对应的函数集
-    mFnAttr = OpenMaya.MFnNumericAttribute()
+            distance = target_vector.length()
 
-    # 2. create the attributes
-    # # 创建AttributeValue属性，短名为AttrVal，数据类型为float，默认值为0.0，由自定义类中的mObj_Amplitude（MObject类型）来接收
-    Ripple.mObj_Amplitude = mFnAttr.create("AmplitudeValue", "AmplitudeVal", OpenMaya.MFnNumericData.kFloat, 0.0)
-    mFnAttr.setKeyable(1)
-    mFnAttr.setMin(0.0)
-    mFnAttr.setMax(1.0)
+            if distance <= max_distance:
 
-    Ripple.mObj_Displace = mFnAttr.create("DisplaceValue", "DispVal", OpenMaya.MFnNumericData.kFloat, 0.0)
-    mFnAttr.setKeyable(1)
-    mFnAttr.setMin(0.0)
-    mFnAttr.setMax(10.0)
+                normal = normals[geo_iter.index()] # 局部空间下的顶点的法线浮点向量
 
-    # 3. Attaching the attributes to the Node
-    Ripple.addAttribute(Ripple.mObj_Amplitude)
-    Ripple.addAttribute(Ripple.mObj_Displace)
+                angle = normal.angle(target_vector)  # 顶点的法线与顶点与目标点的向量之间的角度
+                if angle <= AttractorDeformerNode.MAX_ANGLE:
 
-    '''
-    SWIG - Simplified Wrapper Interface Generator 简化 包装器 接口 生成器   
-    是允许开发人员使用脚本语言包装C++代码的工具,因为maya核心是由C++编写的
-    Autodesk 为我们提供了一种使用swig使用这些属性的方法
-    '''
-    outputGeom = OpenMayaMPx.cvar.MPxGeometryFilter_outputGeom
+                    offset = target_vector * ((max_distance-distance)/max_distance)
 
-    # 4. Design circuitry
-    Ripple.attributeAffects(Ripple.mObj_Amplitude, outputGeom)
-    Ripple.attributeAffects(Ripple.mObj_Displace, outputGeom)
+                    new_pt_local = pt_local + om.MVector(offset)  # 局部空间下的新顶点位置
 
+                    geo_iter.setPosition(new_pt_local)
 
-# Initialize the script plug-in
-def initializePlugin(mobject):
-    mplugin = OpenMayaMPx.MFnPlugin(mobject, "Violet", "1.0")  # maya准备mobject来创建一个针对Plugin的函数库,第二，三个参数为可选参数，分别代指编写人，版本号
+            geo_iter.next()
+
+    def accessoryAttribute(self):
+        """ 返回要辅助修改的属性 """
+        return AttractorDeformerNode.target_position
+    
+    def accessoryNodeSetup(self, dag_modifier):
+        """ dag_modifier用于执行节点创建和连接操作 """
+        locator = dag_modifier.createNode("locator")
+
+        locator_fn = om.MFnDependencyNode(locator)
+        locator_translate_plug = locator_fn.findPlug("translate", False) # False意思是不需要networkplug，networkplug意思是在DG中建立连接的属性
+
+        target_position_plug = om.MPlug(self.thisMObject(), AttractorDeformerNode.target_position)  # 获取变形器的target_position的plug
+        dag_modifier.connect(locator_translate_plug, target_position_plug)
+
+        # 将定位器得位置设置在output_geom的位置
+        # 这里的output_geom指的是shape节点
+        # parent指的是transform节点，因为只有transform节点才有xyz坐标
+        output_geom_plug = om.MPlug(self.thisMObject(), self.outputGeom)
+        mPlugArray2 = om.MPlugArray()
+        output_geom_plug[0].connectedTo(mPlugArray2,False,True)
+        output_geom_obj = mPlugArray2[0].node()
+        output_geom_fn = om.MFnDagNode(output_geom_obj)
+        parent_obj = output_geom_fn.parent(0)
+        parent_fn = om.MFnDependencyNode(parent_obj)
+        parent_translate_plug = parent_fn.findPlug("translate",False)
+        parent_translate_x_handle = parent_translate_plug.child(0).asFloat()
+        parent_translate_y_handle = parent_translate_plug.child(1).asFloat()
+        parent_translate_z_handle = parent_translate_plug.child(2).asFloat()
+    
+        locator_translate_plug.child(0).setFloat(parent_translate_x_handle)
+        locator_translate_plug.child(1).setFloat(parent_translate_y_handle)
+        locator_translate_plug.child(2).setFloat(parent_translate_z_handle)
+
+        
+
+        
+        
+    @classmethod
+    def creator(cls):
+        return AttractorDeformerNode()
+    
+    @classmethod
+    def initialize(cls):
+        
+        numeric_attr = om.MFnNumericAttribute()
+        cls.max_distance = numeric_attr.create("maximumDistance", "maxDist", om.MFnNumericData.kFloat, 1.0)
+        numeric_attr.setKeyable(True)
+        numeric_attr.setMin(0.0)
+        numeric_attr.setMax(2.0)
+
+        cls.target_position = numeric_attr.createPoint("targetPosition", "targetPos")
+        numeric_attr.setKeyable(True)
+
+        cls.addAttribute(cls.max_distance)
+        cls.addAttribute(cls.target_position)
+
+        #变形器节点具有默认的outputGeom属性，因此我们没必要再创建一个输出的属性，我们可以直接利用这个默认的outputGemo属性
+        output_geom = ommpx.cvar.MPxGeometryFilter_outputGeom  
+
+        cls.attributeAffects(cls.max_distance, output_geom)
+        cls.attributeAffects(cls.target_position,output_geom)
+
+def initializePlugin(plugin):
+    """ 插件加载时执行这个函数"""
+    vendor = "RuiChen"  # 插件制作人的名字
+    version = "1.0.0"  # 插件的版本
+
+    plugin_fn = ommpx.MFnPlugin(plugin, vendor, version)  # 定义插件
+
     try:
-        # 注册一个节点，第一个为节点名字，第二个为节点ID，第三个为创建节点指针的函数，第四个为节点初始化(定义节点的属性函数)，第五个为节点的分类（没有也不会报错，但是最好写上）
-        mplugin.registerNode(nodeName, nodeId, deformerCreator, nodeInitializer, OpenMayaMPx.MPxNode.kDeformerNode)
+        plugin_fn.registerNode(AttractorDeformerNode.TYPE_NAME,
+                               AttractorDeformerNode.TYPE_ID,
+                               AttractorDeformerNode.creator,
+                               AttractorDeformerNode.initialize,
+                               ommpx.MPxNode.kDeformerNode)
     except:
-        sys.stderr.write("Failed to register node: " + nodeName)  # 如果注册失败就输出错误
-        raise
+        om.MGlobal.displayError("Failed to register node: {0}".format(AttractorDeformerNode.TYPE_NAME))
+    
+    cmds.makePaintable(AttractorDeformerNode.TYPE_NAME, "weights", attrType="multiFloat", shapeMode = "deformer") # 使其能绘制权重
 
-
-# Uninitialize the scrip plug-in
-def uninitializePlugin(mobject):  # 取消初始化
-    mplugin = OpenMayaMPx.MFnPlugin(mobject)
+def uninitializePlugin(plugin):
+    """ 插件取消加载时执行这个函数"""
+    cmds.makePaintable(AttractorDeformerNode.TYPE_NAME, "weights",remove=True) # 移除使其能绘制权重
+    plugin_fn = ommpx.MFnPlugin(plugin)
     try:
-        mplugin.deregisterCommand(nodeId)  # 使用函数库中的取消注册命令，只需要命令的名字不需要指针
+        plugin_fn.deregisterNode(AttractorDeformerNode.TYPE_ID)
     except:
-        sys.stderr.write("Failed to de-register node: " + nodeName)  # 失败就输出错误
-        raise
+        om.MGlobal.displayError("Failed to deregister node: {0}".format(AttractorDeformerNode.TYPE_NAME))
+    
+if __name__ == '__main__':
+    cmds.file(new=True,f=True)
+    plugin_name = "attractor_deformer_node.py"  # 插件的文件名
+    # 如果插件加载了就先取消加载插件
+    cmds.evalDeferred(
+        'if cmds.pluginInfo("{0}", q=True, loaded=True): cmds.unloadPlugin("{0}")'.format(plugin_name))
+    # 如果插件没有加载就加载插件
+    cmds.evalDeferred(
+        'if not cmds.pluginInfo("{0}", q=True, loaded=True): cmds.loadPlugin("{0}")'.format(plugin_name))
+
+    cmds.evalDeferred('cmds.file("D:/ZhangRuiChen/zrctest/attractor_test.ma",o=True,f=True)')
+    cmds.evalDeferred('cmds.select("pSphere1"); cmds.deformer(typ="attractordeformernode")')
+    #cmds.evalDeferred('cmds.connectAttr("locator1.translate","attractordeformernode1.targetPosition",f=True)')

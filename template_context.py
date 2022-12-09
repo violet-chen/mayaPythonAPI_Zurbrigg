@@ -34,7 +34,7 @@ class SimpleContext(omui.MPxContext):
         print("toolOffCleanup")
     
     def doPress(self, event, draw_manager, frame_context):
-        """ 按下鼠标时执行 """
+        """ 按下键时执行 """
         mouse_button = event.mouseButton()  # 获取鼠标的按键
 
         if mouse_button == omui.MEvent.kLeftMouse:
@@ -45,7 +45,7 @@ class SimpleContext(omui.MPxContext):
             print("Middle mouse button pressed")
     
     def doRelease(self, event, draw_manager, frame_context):
-        """ 松开鼠标时执行 """
+        """ 松开键时执行 """
         print("Mouse button released")
     
     def doDrag(self, event, draw_manager, frame_context):

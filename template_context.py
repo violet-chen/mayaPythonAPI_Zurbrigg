@@ -3,7 +3,7 @@
 import maya.api.OpenMaya as om
 import maya.api.OpenMayaUI as omui
 import maya.cmds as cmds
-import os.path
+import os
 
 def maya_useNewAPI():
     """ 告知maya,使用的是maya api 2.0 """
@@ -19,34 +19,50 @@ class SimpleContext(omui.MPxContext):
         super(SimpleContext, self).__init__()
 
         self.setTitleString(SimpleContext.TITLE)
-        file_path = os.path.abspath(__file__).replace("\\", "/")
-        self.setImage(file_path + "/icons/icon_windows.png", omui.MPxContext.kImage1) # 34*34像素
+        plugin_dir_path = os.path.dirname(cmds.pluginInfo("template_context.py",p=True,q=True))  
+        self.setImage(plugin_dir_path + "/icons/icon_windows.png", omui.MPxContext.kImage1) # 设置工具的图标
     
     def helpSlateHasChanged(self, event):
         self.setHelpString(SimpleContext.HELP_TEXT)
 
     def toolOnSetup(self, event):
+        """ 工具加载时执行 """
         print("toolOnSetup")
 
     def toolOffCleanup(self):
+        """ 取消工具加载时执行(在使用工具的同时创建模型maya会自动先取消加载工具再自动加载工具) """
         print("toolOffCleanup")
     
     def doPress(self, event, draw_manager, frame_context):
-        mouse_button = event.mouseButton()
+        """ 按下鼠标时执行 """
+        mouse_button = event.mouseButton()  # 获取鼠标的按键
 
         if mouse_button == omui.MEvent.kLeftMouse:
-            print("Left mouse button pressed")
+            # 如果按下鼠标左键执行
+            print("Left mouse button pressed") 
         elif mouse_button == omui.MEvent.kMiddleMouse:
+            # 如果按下鼠标中键执行
             print("Middle mouse button pressed")
     
     def doRelease(self, event, draw_manager, frame_context):
+        """ 松开鼠标时执行 """
         print("Mouse button released")
     
     def doDrag(self, event, draw_manager, frame_context):
+        """ 按住鼠标左键并进行移动时执行 """
         print("Mouse drag")
     
-    def compleateAction(self):
+    def completeAction(self):
+        """ 按下enter键时执行 """
         print("Complete action (enter/return key pressed)")
+    
+    def deleteAction(self):
+        """ 按下delete键或者backspace键时执行 """
+        print("Delete action (backspace/delete key pressed)")
+    
+    def abortAction(self):
+        """ 按下esc键时执行 """
+        print("Abort action (escape key pressed)")
 
 class SimpleContextCmd(omui.MPxContextCommand):
 

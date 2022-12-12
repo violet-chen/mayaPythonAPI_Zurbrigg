@@ -20,9 +20,9 @@ class SimpleContext(omui.MPxContext):
 
         self.setTitleString(SimpleContext.TITLE)
         plugin_dir_path = os.path.dirname(cmds.pluginInfo("template_context.py",p=True,q=True))  
-        self.setImage(plugin_dir_path + "/icons/icon_windows.png", omui.MPxContext.kImage1) # 设置工具的图标
+        self.setImage(plugin_dir_path + "/icons/icon_windows.png", omui.MPxContext.kImage1) # 设置工具的图标 
     
-    def helpSlateHasChanged(self, event):
+    def helpStateHasChanged(self, event):
         self.setHelpString(SimpleContext.HELP_TEXT)
 
     def toolOnSetup(self, event):

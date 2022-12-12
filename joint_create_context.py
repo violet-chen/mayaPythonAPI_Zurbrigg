@@ -48,7 +48,7 @@ class JointCreateContext(omui.MPxContext):
         if self.state >= 0 and self.state < 3:
             om.MGlobal.selectFromScreen(event.position[0], event.position[1],event.position[0],event.position[1],om.MGlobal.kReplaceList)
 
-            active_selection = om.MGlobal.getActiveSelectionList()
+            active_selection = om.MGlobal.getActiveSelectionList() # 获取当前选择的物体
             if active_selection.length() == 1:
                 self.context_selection.merge(active_selection) # 使用merge方法防止重复的对象出现在context_selection中
 
@@ -56,21 +56,37 @@ class JointCreateContext(omui.MPxContext):
 
             self.update_state
     
-    def doDrag(self, event, draw_manager, frame_context):
-        """ 按住鼠标左键并进行移动时执行 """
-        print("Mouse drag")
-    
     def completeAction(self):
         """ 按下enter键时执行 """
-        print("Complete action (enter/return key pressed)")
+        selection_count = self.context_selection.length()
+        if selection_count == 3:
+            om.MGlobal.setActiveSelectionList(om.MSelectionList())
+
+            for i in range(selection_count):
+                transform_fn = om.MFnTransform(self.context_selection.getDependNode(i))
+
+                cmds.joint(position = transform_fn.translation(om.MSpace.kTransform))
+                cmds.delete(transform_fn.name())
+            
+            cmds.select(clear=True)
+            self.reset_state()
+        
+        else:
+            om.MGlobal.displayError("Three objects must be selected")
     
     def deleteAction(self):
         """ 按下delete键或者backspace键时执行 """
-        print("Delete action (backspace/delete key pressed)")
+        selection_count = self.context_selection.length()
+        if selection_count > 0:
+            self.context_selection.remove(selection_count - 1)
+
+            om.MGlobal.setActiveSelectionList(self.context_selection)
+
+            self.update_state()
     
     def abortAction(self):
         """ 按下esc键时执行 """
-        print("Abort action (escape key pressed)")
+        self.reset_state()
 
     def update_state(self):
         """ 更新状态 """
@@ -121,6 +137,8 @@ def uninitializePlugin(plugin):
 if __name__ == '__main__':
     """ 注册后,在maya脚本编辑器中的使用方法 """
     cmds.file(new=True,force=True)
+    plugin_dir_path = os.path.dirname(cmds.pluginInfo("joint_create_context.py",p=True,q=True)) 
+    test_file_path = plugin_dir_path + "/test_scene/joint_create_context_test.ma"
 
     plugin_name = "joint_create_context.py"  # 插件的文件名
 
@@ -128,5 +146,5 @@ if __name__ == '__main__':
     cmds.evalDeferred('if cmds.pluginInfo("{0}", q=True, loaded=True): cmds.unloadPlugin("{0}")'.format(plugin_name))
     # 如果插件没有加载就加载插件
     cmds.evalDeferred('if not cmds.pluginInfo("{0}", q=True, loaded=True): cmds.loadPlugin("{0}")'.format(plugin_name))
-
+    cmds.evalDeferred('cmds.file(test_file_path,o=True,f=True)')
     cmds.evalDeferred('context = cmds.rcJointCreateCtx(); cmds.setToolTo(context)')

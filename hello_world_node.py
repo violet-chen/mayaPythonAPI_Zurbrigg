@@ -7,7 +7,7 @@ import maya.cmds as cmds
 
 
 def maya_useNewAPI():
-    """ 告知maya，使用的是maya api 2.0 """
+    """ 告知maya,使用的是maya api 2.0 """
     pass
 
 
@@ -30,21 +30,33 @@ class HelloWorldNode(omui.MPxLocatorNode):
 
 
 class HelloWorldDrawOverride(omr.MPxDrawOverride):
+    """ 负责在视口中绘制几何图形 """
     NAME = "HelloWorldDrawOverride"
 
     def __init__(self, obj):
-        super(HelloWorldDrawOverride, self).__init__(obj, None, False)
-
-    def prepareForDraw(self, obj_path, camera_path, frame_context, old_data):
-        pass
+        super(HelloWorldDrawOverride, self).__init__(obj, None, False) # 第一个参数是maya object,第二个参数是绘制是callback函数,第三个参数是默认为True,为True时将会将此标志位dirty状态，因此可以持续更新,建议为True,除非遇到了性能问题可以为False
 
     def supportedDrawAPIs(self):
+        """ 让maya知道支持哪个图形api,kAllDevices指的是使用OpenGL and Direct X 11"""
         return omr.MRenderer.kAllDevices
 
     def hasUIDrawables(self):
+        """ 表示使用addUIDrawables方法来绘制图形 """
         return True
 
+    def prepareForDraw(self, obj_path, camera_path, frame_context, old_data):
+        """ 在使用绘制图形的方法之前,使用这个方法来将数据检索与缓存 """
+        pass
+
     def addUIDrawables(self, obj_path, draw_manager, frame_context, data):
+        """ 绘制图形的方法
+
+        Args:
+            obj_path (_type_): 指向正在绘制的对象的路径,这里是指locator节点
+            draw_manager (_type_): 用于绘制简单的几何图形
+            frame_context (_type_): 包含当前渲染框架的一些全局信息
+            data (_type_): 用户创建的数据对象,存储缓存数据
+        """
         draw_manager.beginDrawable()
         draw_manager.text2d(om.MPoint(100, 100), "Hello World")
         draw_manager.endDrawable()
@@ -94,7 +106,7 @@ def uninitializePlugin(plugin):
 
 
 if __name__ == '__main__':
-    """ 注册后，在maya脚本编辑器中的使用方法 """
+    """ 注册后,在maya脚本编辑器中的使用方法 """
     plugin_name = "hello_world_node.py"  # 插件的文件名
     # 如果插件加载了就先取消加载插件
     cmds.evalDeferred('if cmds.pluginInfo("{0}", q=True, loaded=True): cmds.unloadPlugin("{0}")'.format(plugin_name))

@@ -84,6 +84,8 @@ class SimpleLocatorDrawOverride(omr.MPxDrawOverride):
         """
         draw_manager.beginDrawable()
 
+        draw_manager.setColor(data.wireframe_color)
+
         if data.shape_index == 0: # 绘制圆形
             draw_manager.circle(om.MPoint(0.0, 0.0, 0.0), om.MVector(0.0, 1.0, 0.0), 1, False)
         elif data.shape_index == 1: # 绘制矩形
@@ -140,6 +142,8 @@ def uninitializePlugin(plugin):
 
 if __name__ == '__main__':
     """ 注册后,在maya脚本编辑器中的使用方法 """
+    cmds.file(new=True,f=True)
+
     plugin_name = "simple_locator_node.py"  # 插件的文件名
     # 如果插件加载了就先取消加载插件
     cmds.evalDeferred('if cmds.pluginInfo("{0}", q=True, loaded=True): cmds.unloadPlugin("{0}")'.format(plugin_name))

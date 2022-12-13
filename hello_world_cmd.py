@@ -51,7 +51,7 @@ if __name__ == '__main__':
     plugin_name = "hello_world_cmd.py"  # 插件的文件名
     # 如果插件加载了就先取消加载插件
     cmds.evalDeferred(
-        'if cmds.pluginInfo("{0}", q=True, loaded=True): cmds.unloadPlugin("{0}")'.format(plugin_name))
+        'if cmds.pluginInfo("{0}", q=True, loaded=True): cmds.unloadPlugin("{0}")'.format(plugin_name)) # 在main函数中需要通过cmds.evalDeferred包装确保一行一行的执行
     # 如果插件没有加载就加载插件
     cmds.evalDeferred(
         'if not cmds.pluginInfo("{0}", q=True, loaded=True): cmds.loadPlugin("{0}")'.format(plugin_name))

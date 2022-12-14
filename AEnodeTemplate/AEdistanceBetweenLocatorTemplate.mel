@@ -1,0 +1,22 @@
+// distanceBetweenLocator节点在属性编辑器中的模板
+// 在mel中不需要在意缩进，这里的缩进只是为了排版更好看而已
+global proc AEdistanceBetweenLocatorTemplate(string $nodeName)
+{
+    editorTemplate -beginScrollLayout;
+        
+        editorTemplate -beginLayout "Distance Between Attributes" -collapse 0; //collapse 意思是展开，不折叠
+
+            editorTemplate -addControl "point1";
+            editorTemplate -addControl "point2";
+            editorTemplate -addControl "minDistance";
+            editorTemplate -addControl "maxDistance";
+
+            AEaddRampControl($nodeName + ".colorRamp");
+
+        editorTemplate -endLayout;
+
+    editorTemplate -addExtraControls;
+    editorTemplate -endScrollLayout;
+}
+// 刷新属性编辑器，便于快速看到代码改变带来的影响
+refreshEditorTemplates; 
